@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Circle, Svg, SvgUri, SvgXml } from 'react-native-svg';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Alert, Dimensions, Easing, FlatList, Image, Keyboard, Modal, PanResponder, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { HealthScreen } from '../screens/HealthScreen';
 import { PlanScreen } from '../screens/PlanScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { HomeHeader } from '../components/HomeHeader';
 import { COLORS } from '../constants/theme';
 import { StorageService } from '../services/storage';
 import { TimeBlock } from '../types';
@@ -107,11 +109,17 @@ const calendarIconSvg = `<svg width="24" height="25" viewBox="0 0 24 25" fill="n
 const goalsIconSvg = `<svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.8116 9.63589H18.6472M14.8116 9.63589V5.78536M14.8116 9.63589L12.0992 12.3592M14.8116 9.63589L14.8112 6.41715M14.8116 9.63589L18.0177 9.63582M18.6472 9.63589L23.25 5.01526M18.6472 9.63589L21.4455 6.82636M18.6472 9.63589L18.0177 9.63582M23.25 5.01526H19.4143L19.3293 1.25006M23.25 5.01526L21.4455 6.82636M19.3293 1.25006L14.8116 5.78536M19.3293 1.25006L17.6097 2.97594M14.8116 5.78536L17.6097 2.97594M14.8116 5.78536L14.8112 6.41715M17.6097 2.97594C15.9946 2.01793 14.1107 1.46819 12.0989 1.46819C6.1072 1.46819 1.25 6.34422 1.25 12.3591C1.25 18.374 6.1072 23.2501 12.0989 23.2501C18.0905 23.2501 22.9477 18.374 22.9477 12.3591C22.9477 10.3393 22.4 8.44784 21.4455 6.82636M14.8112 6.41715C13.9855 6.03668 13.0669 5.82456 12.0989 5.82456C8.50387 5.82456 5.58955 8.75018 5.58955 12.3591C5.58955 15.9681 8.50387 18.8937 12.0989 18.8937C15.6939 18.8937 18.6082 15.9681 18.6082 12.3591C18.6082 11.3872 18.3968 10.4648 18.0177 9.63582" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const leaderboardIconSvg = `<svg width="27" height="22" viewBox="0 0 27 22" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="13.5127" cy="5.5" r="4.15" stroke="#F2F2F7" stroke-width="2.7" stroke-linecap="round"/><path d="M17.9845 5.4875C18.3525 4.85013 18.9586 4.38504 19.6695 4.19456C20.3804 4.00408 21.1378 4.1038 21.7752 4.47178C22.4126 4.83977 22.8777 5.44588 23.0681 6.15678C23.2586 6.86768 23.1589 7.62513 22.7909 8.2625C22.4229 8.89988 21.8168 9.36496 21.1059 9.55545C20.395 9.74593 19.6376 9.64621 19.0002 9.27822C18.3628 8.91024 17.8977 8.30412 17.7073 7.59323C17.5168 6.88233 17.6165 6.12488 17.9845 5.4875L17.9845 5.4875Z" stroke="#F2F2F7" stroke-width="2.7"/><path d="M4.23447 5.4875C4.60246 4.85013 5.20857 4.38504 5.91947 4.19456C6.63037 4.00408 7.38782 4.1038 8.0252 4.47178C8.66257 4.83977 9.12765 5.44588 9.31814 6.15678C9.50862 6.86768 9.4089 7.62513 9.04092 8.2625C8.67293 8.89988 8.06682 9.36496 7.35592 9.55545C6.64502 9.74593 5.88757 9.64621 5.2502 9.27822C4.61282 8.91024 4.14774 8.30412 3.95725 7.59323C3.76677 6.88233 3.86649 6.12488 4.23447 5.4875L4.23447 5.4875Z" stroke="#F2F2F7" stroke-width="2.7"/><path d="M20.248 13.75V12.4H20.2479L20.248 13.75ZM25.2432 17.8994L26.5334 17.5021L26.5334 17.502L25.2432 17.8994ZM24.3662 19V20.35L24.3668 20.35L24.3662 19ZM20.0928 19L18.7693 19.2666L18.9876 20.35H20.0928V19ZM17.3369 14.6826L16.5205 13.6074L14.959 14.7931L16.6237 15.8289L17.3369 14.6826ZM20.248 13.75V15.1C22.5324 15.1 23.5157 16.8772 23.953 18.2968L25.2432 17.8994L26.5334 17.502C26.0223 15.8426 24.4416 12.4 20.248 12.4V13.75ZM25.2432 17.8994L23.9529 18.2967C23.9019 18.131 23.9457 17.9398 24.0514 17.8106C24.1466 17.6941 24.2697 17.65 24.3656 17.65L24.3662 19L24.3668 20.35C25.7233 20.3494 27.021 19.0856 26.5334 17.5021L25.2432 17.8994ZM24.3662 19V17.65H20.0928V19V20.35H24.3662V19ZM20.0928 19L21.4162 18.7335C21.1294 17.3097 20.3311 14.9556 18.0501 13.5364L17.3369 14.6826L16.6237 15.8289C17.974 16.6689 18.5414 18.1349 18.7693 19.2666L20.0928 19ZM17.3369 14.6826L18.1533 15.7578C18.6518 15.3793 19.3151 15.1001 20.2482 15.1L20.248 13.75L20.2479 12.4C18.7148 12.4001 17.4802 12.8788 16.5205 13.6074L17.3369 14.6826Z" fill="#F2F2F7"/><path d="M6.1377 13.75L6.13773 12.4H6.1377V13.75ZM9.31348 14.9834L10.1161 16.0689L11.4008 15.1189L10.2498 14.0108L9.31348 14.9834ZM6.91797 18.75V20.1H7.96032L8.22404 19.0916L6.91797 18.75ZM1.39648 17.6504L0.108981 17.2444L0.108767 17.2451L1.39648 17.6504ZM6.1377 13.75L6.13766 15.1C7.1796 15.1 7.87353 15.4711 8.37719 15.956L9.31348 14.9834L10.2498 14.0108C9.28078 13.078 7.92867 12.4001 6.13773 12.4L6.1377 13.75ZM9.31348 14.9834L8.51083 13.8979C6.74928 15.2005 5.96616 17.0538 5.61189 18.4084L6.91797 18.75L8.22404 19.0916C8.49679 18.0486 9.04394 16.8617 10.1161 16.0689L9.31348 14.9834ZM6.91797 18.75V17.4H2.27051V18.75V20.1H6.91797V18.75ZM2.27051 18.75V17.4C2.36648 17.4 2.49009 17.4439 2.58607 17.5615C2.69294 17.6924 2.7373 17.887 2.6842 18.0557L1.39648 17.6504L0.108767 17.2451C-0.391865 18.8356 0.917539 20.1 2.27051 20.1V18.75ZM1.39648 17.6504L2.68399 18.0564C3.10756 16.7132 4.03179 15.1 6.1377 15.1V13.75V12.4C2.14625 12.4 0.613826 15.6434 0.108981 17.2444L1.39648 17.6504Z" fill="#F2F2F7"/><path d="M13.5127 13.75C18.7429 13.75 19.9942 17.7289 20.2935 19.6327C20.3793 20.1783 19.94 20.625 19.3877 20.625H7.6377C7.08541 20.625 6.64606 20.1783 6.73184 19.6327C7.03122 17.7289 8.28253 13.75 13.5127 13.75Z" stroke="#F2F2F7" stroke-width="2.7" stroke-linecap="round"/></svg>`;
 
-const getTabIconSvg = (routeName: string) => {
-  if (routeName === 'Now') return dashboardIconSvg;
-  if (routeName === 'Framework') return insightIconSvg;
-  if (routeName === 'Goal page') return goalsIconSvg;
-  return leaderboardIconSvg;
+const intelligenceTabIconUri = Image.resolveAssetSource(require('../../assets/icons/intelligence tab.svg')).uri;
+const strengthTabIconUri = Image.resolveAssetSource(require('../../assets/icons/strength tab.svg')).uri;
+const tabLogoSource = require('../../assets/icons/logo.jpg');
+
+const getTabIconSource = (routeName: string) => {
+  if (routeName === 'Now') return { type: 'xml', value: dashboardIconSvg };
+  if (routeName === 'Framework') return { type: 'xml', value: insightIconSvg };
+  if (routeName === 'Intelligence') return { type: 'uri', value: intelligenceTabIconUri };
+  if (routeName === 'Strength') return { type: 'uri', value: strengthTabIconUri };
+  if (routeName === 'Goal page') return { type: 'xml', value: goalsIconSvg };
+  return { type: 'xml', value: leaderboardIconSvg };
 };
 
 const BRAIN_LOGO_GREEN = '#3CAD74';
@@ -132,6 +140,13 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
       startTime?: string;
       endTime?: string;
       notes?: string;
+      steps?: Array<{
+        id: string;
+        title: string;
+        durationLabel?: string;
+        durationMinutes?: number;
+        isDone?: boolean;
+      }>;
       priority?: 'low' | 'med' | 'high';
       tags?: string[];
       confidence?: number;
@@ -140,10 +155,10 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
   >([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Record<string, boolean>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [collapsedRoutineIds, setCollapsedRoutineIds] = useState<Record<string, boolean>>({});
   const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const committedTranscript = useRef('');
   const editIconUri = Image.resolveAssetSource(require('../../assets/icons/EDIT ICON.svg')).uri;
-  const tickIconUri = Image.resolveAssetSource(require('../../assets/icons/TICKICON.svg')).uri;
   const timetableIconUri = Image.resolveAssetSource(require('../../assets/icons/TIMETABLE ICON.svg')).uri;
   const repeatIconUri = Image.resolveAssetSource(require('../../assets/icons/REPEAT ICON.svg')).uri;
   const dashboardIconUri = Image.resolveAssetSource(require('../../assets/icons/dashboard icon.svg')).uri;
@@ -164,6 +179,7 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
   const attachFileIconUri = Image.resolveAssetSource(require('../../assets/icons/attach file icon.svg')).uri;
   const showIntro = !hasSent;
   const showSend = inputText.trim().length > 0;
+  const selectedCount = Object.values(selectedTaskIds).filter(Boolean).length;
   const speechRecognition = speechModule?.ExpoSpeechRecognitionModule;
   const addSpeechListener = speechModule?.addSpeechRecognitionListener;
   const keyboardShift = useRef(new Animated.Value(0)).current;
@@ -416,6 +432,52 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
     return 'No time set';
   };
 
+  const parseDurationMinutes = (value?: string) => {
+    if (!value) return null;
+    const match = value.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins|minute|minutes)\b/i);
+    if (!match) return null;
+    const amount = Number(match[1]);
+    if (Number.isNaN(amount)) return null;
+    const unit = match[2].toLowerCase();
+    return unit.startsWith('h') ? Math.round(amount * 60) : Math.round(amount);
+  };
+
+  const formatDurationLabel = (minutes: number) => {
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const remainder = minutes % 60;
+      return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+    }
+    return `${minutes}m`;
+  };
+
+  const parseRoutineStepsFromNotes = (notes?: string) => {
+    if (!notes) return [];
+    const lines = notes
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+    const normalized = lines.flatMap(line =>
+      line
+        .split(/[•·]/)
+        .map(part => part.trim())
+        .filter(Boolean)
+    );
+    return normalized.map((line, index) => {
+      const cleaned = line.replace(/^[-*]\s*/, '').trim();
+      const durationMinutes = parseDurationMinutes(cleaned);
+      const durationLabel = durationMinutes !== null ? formatDurationLabel(durationMinutes) : undefined;
+      const title = durationMinutes !== null ? cleaned.replace(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins|minute|minutes)\b/i, '').trim() : cleaned;
+      return {
+        id: `${Date.now()}-step-${index}`,
+        title: title || cleaned,
+        durationLabel,
+        durationMinutes: durationMinutes ?? undefined,
+        isDone: false,
+      };
+    });
+  };
+
   const getSessionTitle = (list: Array<{ role: 'user' | 'assistant'; text: string }>) => {
     const firstUser = list.find(item => item.role === 'user')?.text;
     const base = (firstUser || list[0]?.text || 'New chat').trim();
@@ -543,6 +605,10 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
 
   const toggleTaskSelection = (taskId: string) => {
     setSelectedTaskIds(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+  };
+
+  const toggleRoutineCollapse = (taskId: string) => {
+    setCollapsedRoutineIds(prev => ({ ...prev, [taskId]: !prev[taskId] }));
   };
 
   const handleIntegrate = async () => {
@@ -756,6 +822,10 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
           typeof item?.category === 'string' ? item.category : typeof item?.type === 'string' ? item.type : 'task'
         );
         const inferredCategory = inferCategoryFromTitle(title, category);
+        const steps =
+          inferredCategory === 'routine'
+            ? parseRoutineStepsFromNotes(rawNotes || title)
+            : undefined;
         return {
           id: `${Date.now()}-${index}`,
           title,
@@ -764,6 +834,7 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
           endTime: endTime ?? undefined,
           category: inferredCategory,
           notes,
+          steps,
           priority,
           tags,
           confidence,
@@ -778,6 +849,13 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
         startTime?: string;
         endTime?: string;
         notes?: string;
+        steps?: Array<{
+          id: string;
+          title: string;
+          durationLabel?: string;
+          durationMinutes?: number;
+          isDone?: boolean;
+        }>;
         priority?: 'low' | 'med' | 'high';
         tags?: string[];
         confidence?: number;
@@ -815,6 +893,7 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
       startTime: incoming.startTime ?? current.startTime,
       endTime: incoming.endTime ?? current.endTime,
       notes: incoming.notes || current.notes,
+      steps: incoming.steps && incoming.steps.length > 0 ? incoming.steps : current.steps,
       priority: incoming.priority || current.priority,
       tags: incoming.tags ?? current.tags,
       confidence: incoming.confidence ?? current.confidence,
@@ -1496,6 +1575,70 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
                       )
                     );
                   };
+                  const isRoutine = task.category === 'routine';
+                  const routineSteps = isRoutine
+                    ? task.steps?.length
+                      ? task.steps
+                      : parseRoutineStepsFromNotes(task.notes)
+                    : [];
+                  const routineCompleted = routineSteps.filter(step => step.isDone).length;
+                  const routineTotal = routineSteps.length;
+                  const routineMinutes = routineSteps.reduce((sum, step) => sum + (step.durationMinutes ?? 0), 0);
+                  const routineDurationLabel = routineMinutes > 0 ? formatDurationLabel(routineMinutes) : getSubtitle(task);
+                  const isCollapsed = collapsedRoutineIds[task.id] ?? false;
+                  if (isRoutine) {
+                    return (
+                      <View key={task.id} style={styles.brainOverlayRoutineCard}>
+                        <TouchableOpacity
+                          style={styles.brainOverlayRoutineHeader}
+                          activeOpacity={0.8}
+                          onPress={() => toggleRoutineCollapse(task.id)}
+                        >
+                          <View style={[styles.brainOverlayRoutineIconWrap, { backgroundColor: getCategoryColor(task.category) }]}>
+                            <Text style={styles.brainOverlayRoutineIcon}>{getEmoji(task.title, task.category)}</Text>
+                          </View>
+                          <View style={styles.brainOverlayRoutineHeaderText}>
+                            <Text style={styles.brainOverlayRoutineTitle}>{task.title}</Text>
+                            <Text style={styles.brainOverlayRoutineSubtitle}>{routineDurationLabel}</Text>
+                          </View>
+                        </TouchableOpacity>
+                        {!isCollapsed && routineSteps.length > 0
+                          ? routineSteps.map(step => (
+                              <View key={step.id} style={styles.brainOverlayRoutineStepRow}>
+                                <View style={styles.brainOverlayRoutineStepIconWrap}>
+                                  <Text style={styles.brainOverlayRoutineStepIcon}>{getEmoji(step.title, 'routine')}</Text>
+                                </View>
+                                <View style={styles.brainOverlayRoutineStepTextWrap}>
+                                  <Text style={styles.brainOverlayRoutineStepTitle}>{step.title}</Text>
+                                  {step.durationLabel ? (
+                                    <Text style={styles.brainOverlayRoutineStepDuration}>{step.durationLabel}</Text>
+                                  ) : null}
+                                </View>
+                                <View style={styles.brainOverlayRoutineStepCheck} />
+                              </View>
+                            ))
+                          : null}
+                        <View style={styles.brainOverlayRoutineFooter}>
+                          <View style={styles.brainOverlayRoutineProgressPill}>
+                            <View style={styles.brainOverlayRoutineProgressIndicator} />
+                            <Text style={styles.brainOverlayRoutineProgressText}>{`${routineCompleted} / ${routineTotal}`}</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.brainOverlayRoutineChevron}
+                            activeOpacity={0.8}
+                            onPress={() => toggleRoutineCollapse(task.id)}
+                          >
+                            <SvgUri
+                              uri={upArrowIconUri}
+                              width={16}
+                              height={16}
+                              style={{ transform: [{ rotate: isCollapsed ? '180deg' : '0deg' }] }}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  }
                   return (
                     <View key={task.id} style={styles.brainOverlayTaskCard}>
                       <View style={styles.brainOverlayTaskMain}>
@@ -1576,13 +1719,13 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
                   <TouchableOpacity
                     style={[
                       styles.brainOverlayConfirmButton,
-                      !Object.values(selectedTaskIds).some(Boolean) && styles.brainOverlayConfirmButtonDisabled,
+                      selectedCount === 0 && styles.brainOverlayConfirmButtonDisabled,
                     ]}
                     activeOpacity={0.85}
                     onPress={handleIntegrate}
-                    disabled={!Object.values(selectedTaskIds).some(Boolean)}
+                    disabled={selectedCount === 0}
                   >
-                    <SvgUri uri={tickIconUri} width={14} height={14} />
+                    <Text style={styles.brainOverlayConfirmButtonText}>{`ADD QUESTS (${selectedCount})`}</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -1880,67 +2023,110 @@ const BrainOverlayScreen = ({ navigation }: { navigation: any }) => {
 };
 
 const CustomTabBar = ({ state, navigation }: BottomTabBarProps) => {
+  const addIndex = state.routes.findIndex(route => route.name === 'Add');
+  const leftRoutes = addIndex === -1 ? state.routes : state.routes.slice(0, addIndex);
+  const rightRoutes = addIndex === -1 ? [] : state.routes.slice(addIndex + 1);
+  const addRoute = addIndex === -1 ? null : state.routes[addIndex];
+
+  const handleTabPress = (routeName: string, routeKey: string) => {
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: routeKey,
+      canPreventDefault: true,
+    });
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (routeName === 'Add') {
+      navigation.navigate('BrainOverlay');
+      return;
+    }
+
+    navigation.navigate(routeName);
+  };
+
+  const renderTabIcon = (routeName: string, isFocused: boolean) => {
+    const iconSource = getTabIconSource(routeName);
+    return (
+      <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
+        {iconSource.type === 'xml' ? (
+          <SvgXml xml={iconSource.value} width={24} height={24} />
+        ) : (
+          <SvgUri uri={iconSource.value} width={24} height={24} />
+        )}
+      </View>
+    );
+  };
+
+  const renderTabButton = (routeName: string, routeKey: string, isFocused: boolean) => {
+    if (routeName === 'Add') {
+      return (
+        <View key={routeKey} style={styles.tabCenterSlot}>
+          <LongPressScale
+            onPress={() => handleTabPress(routeName, routeKey)}
+            activeOpacity={0.9}
+            pressInScale={0.94}
+            style={styles.addButtonWrap}
+          >
+            <View style={styles.addButton}>
+              <Image source={tabLogoSource} style={styles.addLogo} resizeMode="contain" />
+            </View>
+          </LongPressScale>
+        </View>
+      );
+    }
+
+    return (
+      <LongPressScale
+        key={routeKey}
+        onPress={() => handleTabPress(routeName, routeKey)}
+        activeOpacity={0.9}
+        pressInScale={0.96}
+        style={styles.tabItem}
+      >
+        {renderTabIcon(routeName, isFocused)}
+      </LongPressScale>
+    );
+  };
+
   return (
     <View style={styles.tabBarWrapper}>
       <View style={styles.tabBar}>
         <BlurView intensity={Platform.OS === 'ios' ? 36 : 14} tint="dark" style={StyleSheet.absoluteFillObject} />
         <View style={styles.tabBarTint} pointerEvents="none" />
         <View style={styles.tabRow}>
-          {state.routes.map((route, index) => {
-            const isFocused = state.index === index;
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (event.defaultPrevented) {
-                return;
-              }
-
-              if (route.name === 'Add') {
-                navigation.navigate('BrainOverlay');
-                return;
-              }
-
-              navigation.navigate(route.name);
-            };
-
-            if (route.name === 'Add') {
-              return (
-                <LongPressScale
-                  key={route.key}
-                  onPress={onPress}
-                  activeOpacity={0.9}
-                  pressInScale={0.94}
-                  style={styles.addButtonWrap}
-                >
-                  <View style={styles.addButton}>
-                    <Image source={require('../../assets/logos/playstore.png')} style={styles.addLogo} resizeMode="contain" />
-                  </View>
-                </LongPressScale>
-              );
-            }
-
-            const iconXml = getTabIconSvg(route.name);
-            return (
-              <LongPressScale
-                key={route.key}
-                onPress={onPress}
-                activeOpacity={0.9}
-                pressInScale={0.96}
-                style={styles.tabItem}
-              >
-                <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-                  <SvgXml xml={iconXml} width={24} height={24} />
-                </View>
-              </LongPressScale>
-            );
-          })}
+          <View style={[styles.tabGroup, styles.tabGroupLeft]}>
+            {leftRoutes.map((route, index) =>
+              renderTabButton(route.name, route.key, state.index === index),
+            )}
+          </View>
+          {addRoute ? renderTabButton(addRoute.name, addRoute.key, state.index === addIndex) : null}
+          <View style={[styles.tabGroup, styles.tabGroupRight]}>
+            {rightRoutes.map((route, index) =>
+              renderTabButton(route.name, route.key, state.index === index + addIndex + 1),
+            )}
+          </View>
         </View>
       </View>
     </View>
+  );
+};
+
+const IntelligenceScreen = () => {
+  return (
+    <SafeAreaView style={styles.emptyTabScreen}>
+      <HomeHeader centerIcon="lightbulb-outline" hideCalendar={true} hideCenterIcon={true} />
+    </SafeAreaView>
+  );
+};
+
+const StrengthScreen = () => {
+  return (
+    <SafeAreaView style={styles.emptyTabScreen}>
+      <HomeHeader centerIcon="lightbulb-outline" hideCalendar={true} hideCenterIcon={true} />
+    </SafeAreaView>
   );
 };
 
@@ -1955,6 +2141,11 @@ const MainTabs = () => {
         name="Framework" 
         component={InsightsScreen} 
       />
+
+      <Tab.Screen 
+        name="Intelligence" 
+        component={IntelligenceScreen} 
+      />
       
       <Tab.Screen
         name="Add"
@@ -1965,6 +2156,11 @@ const MainTabs = () => {
               navigation.navigate('BrainOverlay');
             },
         })}
+      />
+
+      <Tab.Screen 
+        name="Strength" 
+        component={StrengthScreen} 
       />
 
       <Tab.Screen 
@@ -3203,8 +3399,8 @@ const styles = StyleSheet.create({
   },
   tabBarWrapper: {
     position: 'absolute',
-    left: 8,
-    right: 8,
+    left: 4,
+    right: 4,
     bottom: 18,
   },
   tabBar: {
@@ -3212,7 +3408,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(254,248,239,0.08)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
     justifyContent: 'center',
     backgroundColor: 'transparent',
     overflow: 'hidden',
@@ -3221,12 +3417,35 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
+  emptyTabScreen: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   tabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     height: 84,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
+  },
+  tabGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 2,
+  },
+  tabGroupLeft: {
+    paddingRight: 20,
+  },
+  tabGroupRight: {
+    paddingLeft: 20,
+    justifyContent: 'flex-end',
+  },
+  tabCenterSlot: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabItem: {
     width: 56,
@@ -3254,7 +3473,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FEF8EF',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
@@ -3507,14 +3726,14 @@ const styles = StyleSheet.create({
   brainOverlayTaskList: {
     gap: 6,
     alignSelf: 'stretch',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   brainOverlayTaskCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    width: '96%',
-    alignSelf: 'flex-start',
+    width: '94%',
+    alignSelf: 'center',
     paddingLeft: 14,
     paddingRight: 8,
     paddingVertical: 6,
@@ -3522,6 +3741,121 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0D0D',
     borderWidth: 1,
     borderColor: '#1D1D1D',
+  },
+  brainOverlayRoutineCard: {
+    width: '94%',
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 18,
+    backgroundColor: '#0D0D0D',
+    borderWidth: 1,
+    borderColor: '#1D1D1D',
+    gap: 10,
+  },
+  brainOverlayRoutineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brainOverlayRoutineIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brainOverlayRoutineIcon: {
+    fontSize: 16,
+  },
+  brainOverlayRoutineHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  brainOverlayRoutineTitle: {
+    color: '#FEF8EF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  brainOverlayRoutineSubtitle: {
+    color: '#A8A8AC',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  brainOverlayRoutineStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brainOverlayRoutineStepIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#151515',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  brainOverlayRoutineStepIcon: {
+    fontSize: 13,
+  },
+  brainOverlayRoutineStepTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  brainOverlayRoutineStepTitle: {
+    color: '#FEF8EF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  brainOverlayRoutineStepDuration: {
+    color: '#9A9AA0',
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  brainOverlayRoutineStepCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#FEF8EF',
+  },
+  brainOverlayRoutineFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  brainOverlayRoutineProgressPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#141414',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  brainOverlayRoutineProgressIndicator: {
+    width: 18,
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  brainOverlayRoutineProgressText: {
+    color: '#D6D6D9',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  brainOverlayRoutineChevron: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   brainOverlayTaskMain: {
     flex: 1,
@@ -3612,12 +3946,18 @@ const styles = StyleSheet.create({
   brainOverlayConfirmButton: {
     alignSelf: 'flex-end',
     marginTop: -2,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brainOverlayConfirmButtonText: {
+    color: '#0B0B0B',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   brainOverlayConfirmButtonDisabled: {
     opacity: 0.4,

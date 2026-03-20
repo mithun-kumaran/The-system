@@ -28,8 +28,9 @@ export const HomeHeader = ({
   scheduleVersion,
 }: Props) => {
   const navigation = useNavigation<any>();
-  const xpIconUri = Image.resolveAssetSource(require('../../assets/XP ICON.svg')).uri;
-  const coinIconUri = Image.resolveAssetSource(require('../../assets/COIN ICON.svg')).uri;
+  const streakIconUri = Image.resolveAssetSource(require('../../assets/icons/streaknew.svg')).uri;
+  const xpIconUri = Image.resolveAssetSource(require('../../assets/icons/xpnew.svg')).uri;
+  const coinIconUri = Image.resolveAssetSource(require('../../assets/icons/coin new.svg')).uri;
   const settingsIconUri = Image.resolveAssetSource(require('../../assets/SETTINGS ICON.svg')).uri;
   const [internalDate, setInternalDate] = useState(new Date());
   const [name, setName] = useState('Mitu Kitu');
@@ -437,23 +438,23 @@ export const HomeHeader = ({
           <View style={styles.userMeta}>
             <Text style={styles.userName}>{name}</Text>
             <View style={styles.statsRow}>
-              <View style={styles.statPill}>
-                <View style={styles.statIconWrap}>
-                  <Image source={require('../../assets/FIRE ICON.png')} style={styles.fireIcon} />
+              <View style={[styles.statPill, styles.streakStatPill]}>
+                <View style={styles.streakIconWrap}>
+                  <SvgUri uri={streakIconUri} width={24} height={24} preserveAspectRatio="xMidYMid meet" />
                 </View>
-                <Text style={styles.statText}>{String(streak).padStart(3, '0')}</Text>
+                <Text style={styles.statText}>{String(streak)}</Text>
               </View>
               <View style={styles.statPill}>
                 <View style={styles.statIconWrap}>
-                  <SvgUri uri={xpIconUri} width={22} height={22} preserveAspectRatio="xMidYMid slice" />
+                  <SvgUri uri={xpIconUri} width={18} height={18} preserveAspectRatio="xMidYMid meet" />
                 </View>
-                <Text style={styles.statText}>{String(xp).padStart(3, '0')}</Text>
+                <Text style={styles.statText}>{`${xp}/100`}</Text>
               </View>
               <View style={styles.statPill}>
                 <View style={styles.statIconWrap}>
-                  <SvgUri uri={coinIconUri} width={22} height={22} preserveAspectRatio="xMidYMid slice" />
+                  <SvgUri uri={coinIconUri} width={18} height={18} preserveAspectRatio="xMidYMid meet" />
                 </View>
-                <Text style={styles.statText}>{String(coins).padStart(3, '0')}</Text>
+                <Text style={styles.statText}>{String(coins)}</Text>
               </View>
             </View>
           </View>
@@ -593,6 +594,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     gap: 8,
   },
+  streakStatPill: {
+    paddingHorizontal: 4,
+    gap: 4,
+  },
   statIconWrap: {
     width: 22,
     height: 22,
@@ -602,9 +607,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  fireIcon: {
-    width: 22,
-    height: 22,
+  streakIconWrap: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statIcon: {
+    width: 18,
+    height: 18,
     resizeMode: 'contain',
   },
   statText: {

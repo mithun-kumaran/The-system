@@ -1,147 +1,177 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Image, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Svg, Circle, Path, SvgXml } from 'react-native-svg';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { format, addDays, addMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay, isAfter, isSameMonth } from 'date-fns';
-import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, FONTS, SPACING } from '../constants/theme';
+import { Svg, Circle, SvgUri } from 'react-native-svg';
+import { addDays, endOfMonth, endOfWeek, format, isAfter, isSameDay, isSameMonth, startOfMonth, startOfWeek } from 'date-fns';
+import { BlurView } from 'expo-blur';
+import { COLORS, SPACING } from '../constants/theme';
 import { HomeHeader } from '../components/HomeHeader';
-import { StorageService } from '../services/storage';
- 
-const emojiSvgs = {
-  happy1: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 0H13C12.45 0 12 0.45 12 1C12 1.55 12.45 2 13 2H14C15.1 2 16 2.9 16 4V5C16 5.55 16.45 6 17 6C17.55 6 18 5.55 18 5V4C18 1.79 16.2 0 14 0Z" fill="#3CAE74"/>
-<path d="M17 12C16.45 12 16 12.45 16 13V14C16 15.1 15.1 16 14 16H13C12.45 16 12 16.45 12 17C12 17.55 12.45 18 13 18H14C16.21 18 18 16.2 18 14V13C18 12.45 17.55 12 17 12Z" fill="#3CAE74"/>
-<path d="M5 16H4C2.9 16 2 15.1 2 14V13C2 12.45 1.55 12 1 12C0.45 12 0 12.45 0 13V14C0 16.21 1.8 18 4 18H5C5.55 18 6 17.55 6 17C6 16.45 5.55 16 5 16Z" fill="#3CAE74"/>
-<path d="M1 6C1.55 6 2 5.55 2 5V4C2 2.9 2.9 2 4 2H5C5.55 2 6 1.55 6 1C6 0.45 5.55 0 5 0H4C1.79 0 0 1.8 0 4V5C0 5.55 0.45 6 1 6Z" fill="#3CAE74"/>
-<path d="M4.5 6V6.58C4.5 7.13 4.95 7.58 5.5 7.58C6.05 7.58 6.5 7.13 6.5 6.58V6C6.5 5.45 6.05 5 5.5 5C4.95 5 4.5 5.45 4.5 6Z" fill="#3CAE74"/>
-<path d="M12.51 7.58C13.06 7.58 13.51 7.13 13.51 6.58V6C13.51 5.45 13.06 5 12.51 5C11.96 5 11.51 5.45 11.51 6V6.58C11.51 7.13 11.96 7.58 12.51 7.58Z" fill="#3CAE74"/>
-<path d="M12.7101 12.17C12.3301 11.77 11.7001 11.75 11.3001 12.13C10.0901 13.27 7.88007 13.24 6.71007 12.06C6.32007 11.67 5.69007 11.67 5.30007 12.06C4.91007 12.45 4.91007 13.08 5.30007 13.47C6.27007 14.44 7.63007 15 9.05007 15C10.4701 15 11.7101 14.5 12.6801 13.58C13.0801 13.2 13.1001 12.57 12.7201 12.17H12.7101Z" fill="#3CAE74"/>
-</svg>`,
-  happy2: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 0H13C12.45 0 12 0.45 12 1C12 1.55 12.45 2 13 2H14C15.1 2 16 2.9 16 4V5C16 5.55 16.45 6 17 6C17.55 6 18 5.55 18 5V4C18 1.79 16.2 0 14 0Z" fill="#3CAE74"/>
-<path d="M17 12C16.45 12 16 12.45 16 13V14C16 15.1 15.1 16 14 16H13C12.45 16 12 16.45 12 17C12 17.55 12.45 18 13 18H14C16.21 18 18 16.2 18 14V13C18 12.45 17.55 12 17 12Z" fill="#3CAE74"/>
-<path d="M5 16H4C2.9 16 2 15.1 2 14V13C2 12.45 1.55 12 1 12C0.45 12 0 12.45 0 13V14C0 16.21 1.8 18 4 18H5C5.55 18 6 17.55 6 17C6 16.45 5.55 16 5 16Z" fill="#3CAE74"/>
-<path d="M1 6C1.55 6 2 5.55 2 5V4C2 2.9 2.9 2 4 2H5C5.55 2 6 1.55 6 1C6 0.45 5.55 0 5 0H4C1.79 0 0 1.8 0 4V5C0 5.55 0.45 6 1 6Z" fill="#3CAE74"/>
-<ellipse cx="9" cy="10.5" rx="4" ry="3.5" fill="#3CAE74"/>
-<rect x="3" y="7" width="12" height="4" fill="black"/>
-<path d="M4.5 6V6.58C4.5 7.13 4.95 7.58 5.5 7.58C6.05 7.58 6.5 7.13 6.5 6.58V6C6.5 5.45 6.05 5 5.5 5C4.95 5 4.5 5.45 4.5 6Z" fill="#3CAE74"/>
-<path d="M12.51 7.58C13.06 7.58 13.51 7.13 13.51 6.58V6C13.51 5.45 13.06 5 12.51 5C11.96 5 11.51 5.45 11.51 6V6.58C11.51 7.13 11.96 7.58 12.51 7.58Z" fill="#3CAE74"/>
-</svg>`,
-  sad1: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 0H13C12.45 0 12 0.45 12 1C12 1.55 12.45 2 13 2H14C15.1 2 16 2.9 16 4V5C16 5.55 16.45 6 17 6C17.55 6 18 5.55 18 5V4C18 1.79 16.2 0 14 0Z" fill="#3CAE74"/>
-<path d="M17 12C16.45 12 16 12.45 16 13V14C16 15.1 15.1 16 14 16H13C12.45 16 12 16.45 12 17C12 17.55 12.45 18 13 18H14C16.21 18 18 16.2 18 14V13C18 12.45 17.55 12 17 12Z" fill="#3CAE74"/>
-<path d="M5 16H4C2.9 16 2 15.1 2 14V13C2 12.45 1.55 12 1 12C0.45 12 0 12.45 0 13V14C0 16.21 1.8 18 4 18H5C5.55 18 6 17.55 6 17C6 16.45 5.55 16 5 16Z" fill="#3CAE74"/>
-<path d="M1 6C1.55 6 2 5.55 2 5V4C2 2.9 2.9 2 4 2H5C5.55 2 6 1.55 6 1C6 0.45 5.55 0 5 0H4C1.79 0 0 1.8 0 4V5C0 5.55 0.45 6 1 6Z" fill="#3CAE74"/>
-<path d="M4.5 6V6.58C4.5 7.13 4.95 7.58 5.5 7.58C6.05 7.58 6.5 7.13 6.5 6.58V6C6.5 5.45 6.05 5 5.5 5C4.95 5 4.5 5.45 4.5 6Z" fill="#3CAE74"/>
-<path d="M12.51 7.58C13.06 7.58 13.51 7.13 13.51 6.58V6C13.51 5.45 13.06 5 12.51 5C11.96 5 11.51 5.45 11.51 6V6.58C11.51 7.13 11.96 7.58 12.51 7.58Z" fill="#3CAE74"/>
-<path d="M12.7025 12.83C12.3225 13.23 11.6925 13.25 11.2925 12.87C10.0825 11.73 7.8725 11.76 6.7025 12.94C6.3125 13.33 5.6825 13.33 5.2925 12.94C4.9025 12.55 4.9025 11.92 5.2925 11.53C6.2625 10.56 7.6225 9.99998 9.0425 9.99998C10.4625 9.99998 11.7025 10.5 12.6725 11.42C13.0725 11.8 13.0925 12.43 12.7125 12.83H12.7025Z" fill="#3CAE74"/>
-</svg>`,
-  sad2: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 0H13C12.45 0 12 0.45 12 1C12 1.55 12.45 2 13 2H14C15.1 2 16 2.9 16 4V5C16 5.55 16.45 6 17 6C17.55 6 18 5.55 18 5V4C18 1.79 16.2 0 14 0Z" fill="#3CAE74"/>
-<path d="M17 12C16.45 12 16 12.45 16 13V14C16 15.1 15.1 16 14 16H13C12.45 16 12 16.45 12 17C12 17.55 12.45 18 13 18H14C16.21 18 18 16.2 18 14V13C18 12.45 17.55 12 17 12Z" fill="#3CAE74"/>
-<path d="M5 16H4C2.9 16 2 15.1 2 14V13C2 12.45 1.55 12 1 12C0.45 12 0 12.45 0 13V14C0 16.21 1.8 18 4 18H5C5.55 18 6 17.55 6 17C6 16.45 5.55 16 5 16Z" fill="#3CAE74"/>
-<path d="M1 6C1.55 6 2 5.55 2 5V4C2 2.9 2.9 2 4 2H5C5.55 2 6 1.55 6 1C6 0.45 5.55 0 5 0H4C1.79 0 0 1.8 0 4V5C0 5.55 0.45 6 1 6Z" fill="#3CAE74"/>
-<rect x="3" y="7" width="12" height="4" fill="black"/>
-<mask id="path-6-outside-1_2246_1408" maskUnits="userSpaceOnUse" x="4" y="5" width="4" height="3" fill="black">
-<rect fill="#FEF8EF" x="4" y="5" width="4" height="3"/>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z"/>
-</mask>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z" fill="#3CAE74"/>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z" stroke="#3CAE74" stroke-linecap="round" mask="url(#path-6-outside-1_2246_1408)"/>
-<mask id="path-7-outside-2_2246_1408" maskUnits="userSpaceOnUse" x="10" y="5" width="4" height="3" fill="black">
-<rect fill="#FEF8EF" x="10" y="5" width="4" height="3"/>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z"/>
-</mask>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z" fill="#3CAE74"/>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z" stroke="#3CAE74" stroke-linecap="round" mask="url(#path-7-outside-2_2246_1408)"/>
-<path d="M12.7025 12.83C12.3225 13.23 11.6925 13.25 11.2925 12.87C10.0825 11.73 7.8725 11.76 6.7025 12.94C6.3125 13.33 5.6825 13.33 5.2925 12.94C4.9025 12.55 4.9025 11.92 5.2925 11.53C6.2625 10.56 7.6225 9.99998 9.0425 9.99998C10.4625 9.99998 11.7025 10.5 12.6725 11.42C13.0725 11.8 13.0925 12.43 12.7125 12.83H12.7025Z" fill="#3CAE74"/>
-</svg>`,
-  sad3: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M14 0H13C12.45 0 12 0.45 12 1C12 1.55 12.45 2 13 2H14C15.1 2 16 2.9 16 4V5C16 5.55 16.45 6 17 6C17.55 6 18 5.55 18 5V4C18 1.79 16.2 0 14 0Z" fill="#3CAE74"/>
-<path d="M17 12C16.45 12 16 12.45 16 13V14C16 15.1 15.1 16 14 16H13C12.45 16 12 16.45 12 17C12 17.55 12.45 18 13 18H14C16.21 18 18 16.2 18 14V13C18 12.45 17.55 12 17 12Z" fill="#3CAE74"/>
-<path d="M5 16H4C2.9 16 2 15.1 2 14V13C2 12.45 1.55 12 1 12C0.45 12 0 12.45 0 13V14C0 16.21 1.8 18 4 18H5C5.55 18 6 17.55 6 17C6 16.45 5.55 16 5 16Z" fill="#3CAE74"/>
-<path d="M1 6C1.55 6 2 5.55 2 5V4C2 2.9 2.9 2 4 2H5C5.55 2 6 1.55 6 1C6 0.45 5.55 0 5 0H4C1.79 0 0 1.8 0 4V5C0 5.55 0.45 6 1 6Z" fill="#3CAE74"/>
-<rect x="3" y="7" width="12" height="4" fill="black"/>
-<mask id="path-6-outside-1_2246_1424" maskUnits="userSpaceOnUse" x="4" y="5" width="4" height="3" fill="black">
-<rect fill="#FEF8EF" x="4" y="5" width="4" height="3"/>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z"/>
-</mask>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z" fill="#3CAE74"/>
-<path d="M6.5 6C6.74028 6 6.86042 6 6.93306 6.12245C7.0057 6.2449 6.96299 6.32308 6.87758 6.47944C6.8323 6.56233 6.7751 6.63911 6.70711 6.70711C6.51957 6.89464 6.26522 7 6 7C5.73478 7 5.48043 6.89464 5.29289 6.70711C5.2249 6.63911 5.16771 6.56233 5.12242 6.47944C5.03701 6.32308 4.9943 6.2449 5.06694 6.12245C5.13958 6 5.25972 6 5.5 6L6 6H6.5Z" stroke="#3CAE74" stroke-linecap="round" mask="url(#path-6-outside-1_2246_1424)"/>
-<mask id="path-7-outside-2_2246_1424" maskUnits="userSpaceOnUse" x="10" y="5" width="4" height="3" fill="black">
-<rect fill="#FEF8EF" x="10" y="5" width="4" height="3"/>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z"/>
-</mask>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z" fill="#3CAE74"/>
-<path d="M12.5 6C12.7403 6 12.8604 6 12.9331 6.12245C13.0057 6.2449 12.963 6.32308 12.8776 6.47944C12.8323 6.56233 12.7751 6.63911 12.7071 6.70711C12.5196 6.89464 12.2652 7 12 7C11.7348 7 11.4804 6.89464 11.2929 6.70711C11.2249 6.63911 11.1677 6.56233 11.1224 6.47944C11.037 6.32308 10.9943 6.2449 11.0669 6.12245C11.1396 6 11.2597 6 11.5 6L12 6H12.5Z" stroke="#3CAE74" stroke-linecap="round" mask="url(#path-7-outside-2_2246_1424)"/>
-<path d="M5.32429 12.2726C5.74217 12.1822 6.3005 12.1149 6.92802 12.0696C7.56331 12.0237 8.27735 12 9 12C9.72265 12 10.4367 12.0237 11.072 12.0696C11.6995 12.1149 12.2578 12.1822 12.6757 12.2726" stroke="#3CAE74" stroke-width="2" stroke-linecap="round"/>
-</svg>`,
-};
 
-const INSIGHT_GREEN = '#6FB38C';
-const INSIGHT_YELLOW = '#D6B24C';
-const INSIGHT_RED = '#B23A4B';
+const strengthIconUri = Image.resolveAssetSource(require('../../assets/icons/strength icon.svg')).uri;
+const intelligenceIconUri = Image.resolveAssetSource(require('../../assets/icons/intelligence icons.svg')).uri;
+const healthIconUri = Image.resolveAssetSource(require('../../assets/icons/health icons.svg')).uri;
+const masteryIconUri = Image.resolveAssetSource(require('../../assets/icons/mastery icon.svg')).uri;
+const appearanceIconUri = Image.resolveAssetSource(require('../../assets/icons/appearance icon.svg')).uri;
+const sociabilityIconUri = Image.resolveAssetSource(require('../../assets/icons/sociability icon.svg')).uri;
+const disciplineIconUri = Image.resolveAssetSource(require('../../assets/icons/discipline icon.svg')).uri;
+const wealthIconUri = Image.resolveAssetSource(require('../../assets/icons/wealth icon.svg')).uri;
 
-const metricCards = [
-  { label: 'Cortisol', value: 9.1, color: INSIGHT_GREEN, emoji: '🌡️' },
-  { label: 'Sleep', value: 7.6, color: INSIGHT_GREEN, emoji: '🌙' },
-  { label: 'Recovery', value: 8.2, color: INSIGHT_GREEN, emoji: '♻️' },
-  { label: 'Execution', value: 8.6, color: INSIGHT_GREEN, emoji: '🛠️' },
-  { label: 'Consistency', value: 8.5, color: INSIGHT_GREEN, emoji: '🧱' },
-  { label: 'Motivation', value: 7.4, color: INSIGHT_GREEN, emoji: '🚀' },
-  { label: 'Burnout Risk', value: 9.6, color: INSIGHT_GREEN, emoji: '🥀' },
-  { label: 'Confidence', value: 6.9, color: INSIGHT_YELLOW, emoji: '🦁' },
-  { label: 'Discipline', value: 9.4, color: INSIGHT_GREEN, emoji: '🛡️' },
+const STAT_CARDS = [
+  {
+    key: 'strength',
+    label: 'Strength',
+    icon: strengthIconUri,
+    progress: 0.22,
+    description:
+      'Your physical power. Tracked through workouts logged, weight lifted, training consistency, and progressive overload over time. Every session you complete pushes this stat forward. The iron never lies.',
+    details: [
+      { label: 'Total workouts logged', value: '14' },
+      { label: 'Training streak', value: '6 days' },
+      { label: 'Avg session length', value: '52m' },
+      { label: 'Top lift tracked', value: '185 lb' },
+      { label: 'Progressive overload hits', value: '9' },
+    ],
+  },
+  {
+    key: 'intelligence',
+    label: 'Intelligence',
+    icon: intelligenceIconUri,
+    progress: 0.28,
+    description:
+      'Your mind is a weapon. This stat tracks how much you sharpen it. Study sessions, books read, courses completed, time spent learning. The most dangerous version of you is the most educated one.',
+    details: [
+      { label: 'Total study hours logged', value: '13 hrs' },
+      { label: 'Average daily study time', value: '23m' },
+      { label: 'Longest study streak', value: '7 days' },
+      { label: 'Books / audiobooks completed', value: '3' },
+      { label: 'Study sessions completed', value: '8' },
+      { label: 'Average focus session length', value: '1h 15m' },
+      { label: 'Knowledge quests completed', value: '2' },
+      { label: 'Peak study time', value: '13:30' },
+    ],
+  },
+  {
+    key: 'health',
+    label: 'Health',
+    icon: healthIconUri,
+    progress: 0.18,
+    description:
+      'The foundation everything else is built on. Tracks your sleep, diet, hydration, steps, and hygiene habits daily. Let this stat slip and every other one suffers. Protect it like your life depends on it because it does.',
+    details: [
+      { label: 'Avg sleep', value: '6h 48m' },
+      { label: 'Hydration goals hit', value: '9' },
+      { label: 'Steps logged', value: '52k' },
+      { label: 'Nutrition score', value: '78%' },
+      { label: 'Hygiene streak', value: '10 days' },
+    ],
+  },
+  {
+    key: 'mastery',
+    label: 'Mastery',
+    icon: masteryIconUri,
+    progress: 0.2,
+    description:
+      'The skills that make you rare. Tracked through deliberate practice sessions, time spent training your craft, and milestones hit across your hobbies and disciplines. A man with a skill nobody else has is a man who can never be ignored.',
+    details: [
+      { label: 'Practice sessions', value: '11' },
+      { label: 'Hours invested', value: '9h 40m' },
+      { label: 'Milestones hit', value: '2' },
+      { label: 'Longest streak', value: '5 days' },
+    ],
+  },
+  {
+    key: 'appearance',
+    label: 'Appearance',
+    icon: appearanceIconUri,
+    progress: 0.14,
+    description:
+      'How you show up to the world. Tracked through grooming habits, skincare routines, style choices, and looksmaxxing efforts logged consistently. First impressions are made in seconds. This stat makes sure yours counts.',
+    details: [
+      { label: 'Grooming routines logged', value: '12' },
+      { label: 'Skincare days', value: '9' },
+      { label: 'Style check-ins', value: '6' },
+      { label: 'Looksmaxxing tasks', value: '5' },
+    ],
+  },
+  {
+    key: 'sociability',
+    label: 'Sociability',
+    icon: sociabilityIconUri,
+    progress: 0.12,
+    description:
+      'Your ability to connect, influence, and be remembered. Tracked through social interactions, dates, time with friends, and relationship quality. The Harvard study ran for 85 years and found one thing matters most in life. This is it.',
+    details: [
+      { label: 'Social interactions', value: '18' },
+      { label: 'Quality check-ins', value: '7' },
+      { label: 'Time with friends', value: '6h 20m' },
+      { label: 'Dates logged', value: '2' },
+    ],
+  },
+  {
+    key: 'discipline',
+    label: 'Discipline',
+    icon: disciplineIconUri,
+    progress: 0.25,
+    description:
+      'The stat that makes all the others possible. Tracked through habit adherence, consistency streaks, and how often you actually do what you said you would. Motivation gets you started. Discipline keeps you going when motivation is gone.',
+    details: [
+      { label: 'Habits completed', value: '42' },
+      { label: 'Consistency streak', value: '9 days' },
+      { label: 'Focus blocks hit', value: '10' },
+      { label: 'Weekly adherence', value: '82%' },
+    ],
+  },
+  {
+    key: 'wealth',
+    label: 'Wealth',
+    icon: wealthIconUri,
+    progress: 0.16,
+    description:
+      'Not just money. Effort directed toward financial freedom. Tracked through time spent on work, side hustles, businesses, sales, investing, and income generating activities. Every hour you put into building wealth is logged. Stack the hours. Stack the results.',
+    details: [
+      { label: 'Income hours logged', value: '21h' },
+      { label: 'Side hustle sessions', value: '6' },
+      { label: 'Deals closed', value: '2' },
+      { label: 'Investing sessions', value: '4' },
+      { label: 'Revenue tracked', value: '$420' },
+    ],
+  },
 ];
 
-const reflectionChips = [
-  { label: 'Morning Reflection', color: '#A58B5B', icon: 'weather-sunset' },
-  { label: 'Evening Reflection', color: '#6FB38C', icon: 'leaf' },
-  { label: 'Night Reflection', color: '#6B5AA6', icon: 'weather-night' },
-];
-
-const GRID_COLUMNS = 3;
-const GRID_GAP = 12;
+const GRID_GAP = 16;
 const GRID_SIDE_PADDING = SPACING.l;
-const METRIC_CARD_SIZE =
-  (Dimensions.get('window').width - GRID_SIDE_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
-const MONTH_CELL_SIZE = 32;
+const CARD_WIDTH = (Dimensions.get('window').width - GRID_SIDE_PADDING * 2 - GRID_GAP) / 2;
+const INSIGHT_GREEN = '#6FB38C';
+const INSIGHT_RED = '#B23A4B';
+const MONTH_CELL_SIZE = 26;
 const MONTH_STROKE_WIDTH = 3;
 const MONTH_DASH_COUNT = 8;
 const MONTH_DASH_COLOR = '#2F2F2F';
 const MONTH_TRACK_COLOR = '#2A2A2A';
-
 const monthDayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const monthlyInsightMap = {
-  '2025-06-04': { ratio: 1, color: INSIGHT_GREEN },
-  '2025-06-08': { ratio: 0.9, color: INSIGHT_GREEN },
-  '2025-06-10': { ratio: 0.35, color: INSIGHT_RED },
-  '2025-06-13': { ratio: 0.8, color: INSIGHT_GREEN },
-  '2025-06-16': { ratio: 0.7, color: INSIGHT_GREEN },
-  '2025-06-17': { ratio: 0.65, color: INSIGHT_GREEN },
-  '2025-06-18': { ratio: 0.7, color: INSIGHT_GREEN },
-  '2025-06-19': { ratio: 0.6, color: INSIGHT_GREEN },
-  '2025-06-21': { ratio: 0.75, color: INSIGHT_GREEN },
-  '2025-06-24': { ratio: 0.7, color: INSIGHT_GREEN },
-  '2025-06-25': { ratio: 0.55, color: INSIGHT_GREEN },
-  '2025-06-26': { ratio: 0.4, color: INSIGHT_RED },
-  '2025-06-27': { ratio: 0.75, color: INSIGHT_GREEN },
-  '2025-06-28': { ratio: 0.85, color: INSIGHT_GREEN },
-  '2025-06-29': { ratio: 0.7, color: INSIGHT_GREEN },
-  '2025-06-30': { ratio: 0.9, color: INSIGHT_GREEN },
+const monthlyInsightMap: Record<string, { ratio: number; color: string }> = {
+  '2026-03-04': { ratio: 0.45, color: INSIGHT_GREEN },
+  '2026-03-08': { ratio: 0.8, color: INSIGHT_GREEN },
+  '2026-03-10': { ratio: 0.4, color: INSIGHT_RED },
+  '2026-03-13': { ratio: 0.7, color: INSIGHT_GREEN },
+  '2026-03-16': { ratio: 0.55, color: INSIGHT_GREEN },
+  '2026-03-17': { ratio: 0.62, color: INSIGHT_GREEN },
+  '2026-03-18': { ratio: 0.68, color: INSIGHT_GREEN },
+  '2026-03-19': { ratio: 0.58, color: INSIGHT_GREEN },
+  '2026-03-21': { ratio: 0.7, color: INSIGHT_GREEN },
+  '2026-03-24': { ratio: 0.66, color: INSIGHT_GREEN },
+  '2026-03-25': { ratio: 0.52, color: INSIGHT_GREEN },
+  '2026-03-26': { ratio: 0.38, color: INSIGHT_RED },
+  '2026-03-27': { ratio: 0.76, color: INSIGHT_GREEN },
+  '2026-03-28': { ratio: 0.82, color: INSIGHT_GREEN },
+  '2026-03-29': { ratio: 0.71, color: INSIGHT_GREEN },
+  '2026-03-30': { ratio: 0.88, color: INSIGHT_GREEN },
 };
 
 export const InsightsScreen = () => {
   const today = new Date();
-  const [monthlyMonth, setMonthlyMonth] = useState(startOfMonth(today));
-  const monthlyToday = today;
-  const [todayCompletionRatio, setTodayCompletionRatio] = useState(0);
-  const todayProgressAnim = useRef(new Animated.Value(0)).current;
-  const AnimatedCircle = useMemo(() => Animated.createAnimatedComponent(Circle), []);
-  const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
-  const weekDays = useMemo(() => Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i)), [weekStart]);
+  const [selectedMetric, setSelectedMetric] = useState<(typeof STAT_CARDS)[number] | null>(null);
+  const monthlyMonth = startOfMonth(today);
   const monthStart = useMemo(() => startOfMonth(monthlyMonth), [monthlyMonth]);
   const monthEnd = useMemo(() => endOfMonth(monthlyMonth), [monthlyMonth]);
   const monthGridStart = useMemo(() => startOfWeek(monthStart, { weekStartsOn: 1 }), [monthStart]);
@@ -159,171 +189,54 @@ export const InsightsScreen = () => {
   const monthCircumference = 2 * Math.PI * monthRadius;
   const monthDashLength = (Math.PI * (MONTH_CELL_SIZE - MONTH_STROKE_WIDTH)) / (MONTH_DASH_COUNT * 2);
   const monthDashArray = `${monthDashLength} ${monthDashLength}`;
-  const todayDashOffset = useMemo(
-    () =>
-      todayProgressAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [monthCircumference, 0],
-      }),
-    [todayProgressAnim, monthCircumference],
-  );
-  const tintSvg = (xml: string, color: string) => xml.replace(/#3CAE74/g, color);
-    const weeklyEmojiOrder = [
-      { xml: tintSvg(emojiSvgs.happy1, INSIGHT_GREEN), color: INSIGHT_GREEN },
-      { xml: tintSvg(emojiSvgs.happy2, INSIGHT_YELLOW), color: INSIGHT_YELLOW },
-      { xml: tintSvg(emojiSvgs.happy1, INSIGHT_GREEN), color: INSIGHT_GREEN },
-      { xml: tintSvg(emojiSvgs.happy2, INSIGHT_GREEN), color: INSIGHT_GREEN },
-      { xml: tintSvg(emojiSvgs.happy1, INSIGHT_GREEN), color: INSIGHT_GREEN },
-      { xml: tintSvg(emojiSvgs.happy2, INSIGHT_GREEN), color: INSIGHT_GREEN },
-      { xml: tintSvg(emojiSvgs.happy1, INSIGHT_GREEN), color: INSIGHT_GREEN },
-    ];
-
-  const loadTodayCompletion = useCallback(async () => {
-    const schedule = await StorageService.getSchedule();
-    const dateKey = format(new Date(), 'yyyy-MM-dd');
-    const items = schedule.filter(item => item.date === dateKey && !item.isDeleted);
-    let total = 0;
-    let completed = 0;
-    items.forEach(item => {
-      const steps = item.steps ?? [];
-      if (steps.length > 0) {
-        total += steps.length;
-        completed += steps.filter(step => step.isDone).length;
-      } else {
-        total += 1;
-        if (item.isCompleted) completed += 1;
-      }
-    });
-    const ratio = total > 0 ? completed / total : 0;
-    setTodayCompletionRatio(ratio);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadTodayCompletion();
-    }, [loadTodayCompletion]),
-  );
-
-  useEffect(() => {
-    Animated.timing(todayProgressAnim, {
-      toValue: todayCompletionRatio,
-      duration: 700,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [todayCompletionRatio, todayProgressAnim]);
 
   return (
     <SafeAreaView style={styles.container}>
       <HomeHeader centerIcon="lightbulb-outline" hideCalendar={true} hideCenterIcon={true} />
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerBlock}>
-          <Text style={styles.title}>Current Neurostates</Text>
-          <Text style={styles.description}>A real-time snapshot of your mental and physical alignment.</Text>
-          <Text style={styles.subtitle}>Daily Insights</Text>
+          <Text style={styles.title}>Stats</Text>
         </View>
 
         <View style={styles.metricsGrid}>
-          {metricCards.map(metric => (
-            <View key={metric.label} style={styles.metricCard}>
-              <View style={styles.metricTopRow}>
-                <Text style={styles.metricEmoji}>{metric.emoji}</Text>
-                <Text style={styles.metricLabel} numberOfLines={2}>
-                  {metric.label}
-                </Text>
-              </View>
-              <Text style={styles.metricValue}>{metric.value.toFixed(1)}</Text>
-              <View style={styles.metricFooter}>
-                <View style={styles.metricBarTrack}>
-                  <View style={[styles.metricBarFill, { width: `${metric.value * 10}%`, backgroundColor: metric.color }]} />
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.weeklySection}>
-          <Text style={styles.weeklyTitle}>Weekly Insights</Text>
-          <View style={styles.weekRow}>
-            <View style={styles.daysRow}>
-              {weekDays.map((day, index) => {
-                const isSelected = isSameDay(day, today);
-                const isFuture = isAfter(day, today);
-                const ratio = isFuture ? 0 : 1;
-                const dashed = isFuture && ratio === 0;
-                const size = 40;
-                const strokeWidth = 5;
-                const radius = (size - strokeWidth) / 2;
-                const circumference = 2 * Math.PI * radius;
-                const dashCount = 8;
-                const dashLength = circumference / (dashCount * 2);
-                const dashArray = `${dashLength} ${dashLength}`;
-                const showEmoji = !isFuture;
-                const emoji = weeklyEmojiOrder[index];
-                const ringColor = showEmoji ? emoji.color : COLORS.success;
-
-                return (
-                  <View key={day.toISOString()} style={styles.dayItem}>
-                    <View style={[styles.dayLetterPill, isSelected && styles.dayLetterPillActive]}>
-                      <Text style={[styles.dayLetter, isSelected && styles.dayLetterActive]}>
-                        {format(day, 'EEEEE')}
-                      </Text>
-                    </View>
-                    <View style={styles.dayRingWrapper}>
-                      <Svg width={size} height={size}>
-                        <Circle
-                          cx={size / 2}
-                          cy={size / 2}
-                          r={radius}
-                          stroke="#2A2A2A"
-                          strokeWidth={strokeWidth}
-                          fill="transparent"
-                          strokeDasharray={dashed ? dashArray : undefined}
-                          strokeLinecap={dashed ? 'round' : 'butt'}
-                        />
-                        {ratio > 0 && (
-                          <Circle
-                            cx={size / 2}
-                            cy={size / 2}
-                            r={radius}
-                            stroke={ringColor}
-                            strokeWidth={strokeWidth}
-                            fill="transparent"
-                            strokeDasharray={`${circumference} ${circumference}`}
-                            strokeDashoffset={circumference * (1 - Math.min(1, ratio))}
-                            strokeLinecap="round"
-                            rotation={-90}
-                            originX={size / 2}
-                            originY={size / 2}
-                          />
-                        )}
-                      </Svg>
-                      <View style={styles.dayNumberWrap}>
-                        {showEmoji ? (
-                          <SvgXml xml={emoji.xml} width={18} height={18} />
-                        ) : (
-                          <Text style={styles.dayNumber}>+</Text>
-                        )}
-                      </View>
-                    </View>
+          {STAT_CARDS.map(metric => {
+            return (
+              <TouchableOpacity
+                key={metric.key}
+                style={styles.metricCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedMetric(metric)}
+              >
+                <View style={styles.metricTopRow}>
+                  <View style={styles.metricTrack}>
+                    <View style={[styles.metricTrackFill, { width: `${metric.progress * 100}%` }]} />
                   </View>
-                );
-              })}
-            </View>
-          </View>
+                  <Text style={styles.metricProgressText}>{`${Math.round(metric.progress * 100)}/100`}</Text>
+                </View>
+                <View style={styles.metricContent}>
+                  <View style={styles.metricIconWrap}>
+                    <SvgUri uri={metric.icon} width={24} height={24} />
+                  </View>
+                  <View style={styles.metricText}>
+                    <Text style={styles.metricLabel} numberOfLines={1}>
+                      {metric.label.toUpperCase()}
+                    </Text>
+                    <Text style={styles.metricLevel}>Lvl 1</Text>
+                  </View>
+                </View>
+                <View style={styles.metricDots}>
+                  <View style={styles.metricDotSmall} />
+                  <View style={styles.metricDotSmall} />
+                  <View style={styles.metricDotSmall} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={styles.monthlySection}>
           <View style={styles.monthlyCard}>
-            <View style={styles.monthlyHeader}>
-              <TouchableOpacity style={styles.monthNavButton} onPress={() => setMonthlyMonth(addMonths(monthlyMonth, -1))}>
-                <MaterialCommunityIcons name="chevron-left" size={20} color={COLORS.white} />
-              </TouchableOpacity>
-              <Text style={styles.monthTitle}>{format(monthlyMonth, 'MMM yyyy')}</Text>
-              <TouchableOpacity style={styles.monthNavButton} onPress={() => setMonthlyMonth(addMonths(monthlyMonth, 1))}>
-                <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.monthTitle}>{format(monthlyMonth, 'MMM yyyy')}</Text>
             <View style={styles.monthDayLabelsRow}>
               {monthDayLabels.map((label, index) => (
                 <Text key={`${label}-${index}`} style={styles.monthDayLabel}>
@@ -334,30 +247,32 @@ export const InsightsScreen = () => {
             <View style={styles.monthGrid}>
               {monthDays.map(day => {
                 const key = format(day, 'yyyy-MM-dd');
-                const entry = monthlyInsightMap[key as keyof typeof monthlyInsightMap];
+                const entry = monthlyInsightMap[key];
                 const isInMonth = isSameMonth(day, monthlyMonth);
-                const isFuture = isAfter(day, monthlyToday);
-                const isToday = isSameDay(day, monthlyToday);
+                const isFuture = isAfter(day, today);
+                const isToday = isSameDay(day, today);
                 const hasEntry = Boolean(entry);
                 const dashed = !isToday && (!hasEntry || isFuture);
-                const ratio = isToday ? todayCompletionRatio : hasEntry && !isFuture ? entry.ratio : 0;
-                const ringColor = isToday ? INSIGHT_GREEN : entry?.color ?? INSIGHT_GREEN;
-                const numberColor = isInMonth ? COLORS.white : '#5C5C5C';
+                const ratio = hasEntry && !isFuture ? entry.ratio : 0;
+                const ringColor = entry?.color ?? INSIGHT_GREEN;
+                const numberColor = isToday ? '#FFFFFF' : isInMonth ? COLORS.white : '#5C5C5C';
 
                 return (
                   <View key={key} style={styles.monthDayCell}>
-                    {isToday ? (
-                      <View style={styles.monthRingWrapper}>
-                        <Svg width={MONTH_CELL_SIZE} height={MONTH_CELL_SIZE}>
+                    <View style={styles.monthRingWrapper}>
+                      <Svg width={MONTH_CELL_SIZE} height={MONTH_CELL_SIZE}>
+                        <Circle
+                          cx={MONTH_CELL_SIZE / 2}
+                          cy={MONTH_CELL_SIZE / 2}
+                          r={monthRadius}
+                          stroke={dashed ? MONTH_DASH_COLOR : MONTH_TRACK_COLOR}
+                          strokeWidth={MONTH_STROKE_WIDTH}
+                          fill="transparent"
+                          strokeDasharray={dashed ? monthDashArray : undefined}
+                          strokeLinecap={dashed ? 'round' : 'butt'}
+                        />
+                        {ratio > 0 ? (
                           <Circle
-                            cx={MONTH_CELL_SIZE / 2}
-                            cy={MONTH_CELL_SIZE / 2}
-                            r={monthRadius}
-                            stroke={MONTH_TRACK_COLOR}
-                            strokeWidth={MONTH_STROKE_WIDTH}
-                            fill="transparent"
-                          />
-                          <AnimatedCircle
                             cx={MONTH_CELL_SIZE / 2}
                             cy={MONTH_CELL_SIZE / 2}
                             r={monthRadius}
@@ -365,71 +280,56 @@ export const InsightsScreen = () => {
                             strokeWidth={MONTH_STROKE_WIDTH}
                             fill="transparent"
                             strokeDasharray={`${monthCircumference} ${monthCircumference}`}
-                            strokeDashoffset={todayDashOffset}
+                            strokeDashoffset={monthCircumference * (1 - Math.min(1, ratio))}
                             strokeLinecap="round"
                             rotation={-90}
                             originX={MONTH_CELL_SIZE / 2}
                             originY={MONTH_CELL_SIZE / 2}
                           />
-                        </Svg>
-                        <View style={styles.monthNumberWrap}>
-                          <Text style={styles.monthDayNumber}>{format(day, 'd')}</Text>
-                        </View>
+                        ) : null}
+                      </Svg>
+                      <View style={[styles.monthNumberWrap, isToday && styles.monthNumberWrapToday]}>
+                        <Text style={[styles.monthDayNumber, { color: numberColor }]}>
+                          {format(day, 'd')}
+                        </Text>
                       </View>
-                    ) : (
-                      <View style={styles.monthRingWrapper}>
-                        <Svg width={MONTH_CELL_SIZE} height={MONTH_CELL_SIZE}>
-                          <Circle
-                            cx={MONTH_CELL_SIZE / 2}
-                            cy={MONTH_CELL_SIZE / 2}
-                            r={monthRadius}
-                            stroke={dashed ? MONTH_DASH_COLOR : MONTH_TRACK_COLOR}
-                            strokeWidth={MONTH_STROKE_WIDTH}
-                            fill="transparent"
-                            strokeDasharray={dashed ? monthDashArray : undefined}
-                            strokeLinecap={dashed ? 'round' : 'butt'}
-                          />
-                          {ratio > 0 && (
-                            <Circle
-                              cx={MONTH_CELL_SIZE / 2}
-                              cy={MONTH_CELL_SIZE / 2}
-                              r={monthRadius}
-                              stroke={ringColor}
-                              strokeWidth={MONTH_STROKE_WIDTH}
-                              fill="transparent"
-                              strokeDasharray={`${monthCircumference} ${monthCircumference}`}
-                              strokeDashoffset={monthCircumference * (1 - Math.min(1, ratio))}
-                              strokeLinecap="round"
-                              rotation={-90}
-                              originX={MONTH_CELL_SIZE / 2}
-                              originY={MONTH_CELL_SIZE / 2}
-                            />
-                          )}
-                        </Svg>
-                        <View style={styles.monthNumberWrap}>
-                          <Text style={[styles.monthDayNumber, { color: numberColor }]}>
-                            {format(day, 'd')}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                    {isToday && <Text style={styles.monthTodayLabel}>Today</Text>}
+                    </View>
+                    {isToday ? <Text style={styles.monthTodayLabel}>Today</Text> : null}
                   </View>
                 );
               })}
             </View>
           </View>
         </View>
-
-        <View style={styles.reflectionsRow}>
-          {reflectionChips.map(chip => (
-            <TouchableOpacity key={chip.label} style={[styles.reflectionChip, { backgroundColor: chip.color }]}>
-              <MaterialCommunityIcons name={chip.icon as any} size={14} color={COLORS.white} />
-              <Text style={styles.reflectionText}>{chip.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </ScrollView>
+      <Modal transparent={true} visible={Boolean(selectedMetric)} animationType="fade" statusBarTranslucent={true}>
+        <View style={styles.modalRoot}>
+          <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedMetric(null)} />
+          {selectedMetric ? (
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIconWrap}>
+                  <SvgUri uri={selectedMetric.icon} width={34} height={34} />
+                </View>
+                <View style={styles.modalTitleWrap}>
+                  <Text style={styles.modalTitle}>{selectedMetric.label.toUpperCase()}</Text>
+                  <Text style={styles.modalLevel}>Lvl 1</Text>
+                </View>
+              </View>
+              <Text style={styles.modalDescription}>{selectedMetric.description}</Text>
+              <View style={styles.modalDetailList}>
+                {selectedMetric.details.map(detail => (
+                  <View key={`${selectedMetric.key}-${detail.label}`} style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>{detail.label}:</Text>
+                    <Text style={styles.modalDetailValue}>{detail.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -443,198 +343,198 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 140,
-    marginTop: SPACING.s,
-    paddingHorizontal: SPACING.l,
+    paddingBottom: 120,
+    marginTop: 12,
+    paddingHorizontal: GRID_SIDE_PADDING,
   },
   headerBlock: {
-    marginTop: SPACING.s,
+    marginTop: 10,
+    marginBottom: 18,
   },
   title: {
     color: COLORS.white,
-    fontSize: 30,
+    fontSize: 36,
     fontWeight: '700',
-  },
-  description: {
-    color: '#C9C9C9',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6,
-  },
-  subtitle: {
-    color: '#E7E7E7',
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Circular Std Black',
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 10,
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    columnGap: GRID_GAP,
-    rowGap: GRID_GAP,
+    justifyContent: 'space-between',
+    rowGap: 16,
     marginHorizontal: 0,
     marginTop: 0,
+    marginBottom: 24,
   },
   metricCard: {
-    width: METRIC_CARD_SIZE,
-    height: METRIC_CARD_SIZE,
+    width: CARD_WIDTH,
+    minHeight: 70,
     backgroundColor: '#0B0B0B',
-    borderRadius: 32,
-    padding: 14,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 8,
     borderWidth: 1,
-    borderColor: '#535353',
-    justifyContent: 'flex-start',
-    paddingTop: 18,
+    borderColor: '#3A3A3A',
+    justifyContent: 'space-between',
   },
   metricTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    width: '100%',
+    marginBottom: 2,
   },
-  metricEmoji: {
-    fontSize: 9,
+  metricProgressText: {
+    marginLeft: 8,
+    color: '#C9C9C9',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  metricTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: '#4D4D4D',
+    overflow: 'hidden',
+  },
+  metricTrackFill: {
+    height: '100%',
+    borderRadius: 6,
+    backgroundColor: '#6FB38C',
+  },
+  metricContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: -6,
+  },
+  metricIconWrap: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricText: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 10,
   },
   metricLabel: {
     color: COLORS.white,
-    fontSize: 9,
-    fontWeight: '700',
-    flexShrink: 1,
-    textAlign: 'center',
-    lineHeight: 11,
-  },
-  metricValue: {
-    color: COLORS.white,
-    fontWeight: '700',
-    fontSize: 16,
-    marginTop: 24,
-    alignSelf: 'flex-start',
-  },
-  metricFooter: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginTop: 6,
-    width: '100%',
-  },
-  metricBarTrack: {
-    width: '100%',
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#535353',
-  },
-  metricBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  weeklySection: {
-    marginTop: 36,
-  },
-  weeklyTitle: {
-    color: '#E7E7E7',
     fontSize: 11,
     fontWeight: '700',
-    fontFamily: 'Circular Std Black',
-    textAlign: 'center',
-    marginBottom: 6,
+    letterSpacing: 1,
   },
-  weekRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  metricLevel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  daysRow: {
+  metricDots: {
     flexDirection: 'row',
+    gap: 4,
+    position: 'absolute',
+    right: 12,
+    bottom: 10,
+  },
+  metricDotSmall: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  modalRoot: {
     flex: 1,
     justifyContent: 'center',
-    gap: 16,
+    alignItems: 'center',
   },
-  dayItem: {
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalCard: {
+    width: '86%',
+    backgroundColor: '#0B0B0B',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  modalIconWrap: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 42,
-    height: 66,
-    gap: 5,
   },
-  dayRingWrapper: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalTitleWrap: {
+    gap: 2,
   },
-  dayLetterPill: {
-    height: 14,
-    minWidth: 14,
-    borderRadius: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  dayLetterPillActive: {
-    backgroundColor: '#6FB38C',
-  },
-  dayLetter: {
+  modalTitle: {
     color: COLORS.white,
-    fontSize: 8,
+    fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Circular Std Black',
+    letterSpacing: 1,
   },
-  dayLetterActive: {
+  modalLevel: {
     color: COLORS.white,
-  },
-  dayNumberWrap: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayNumber: {
-    color: COLORS.white,
-    fontSize: 9,
+    fontSize: 20,
     fontWeight: '700',
-    fontFamily: 'Circular Std Black',
+  },
+  modalDescription: {
+    color: '#F1F1F1',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  modalDetailList: {
+    gap: 6,
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  modalDetailLabel: {
+    color: '#9B9B9B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalDetailValue: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '700',
   },
   monthlySection: {
-    marginTop: 12,
+    marginTop: 8,
   },
   monthlyCard: {
     backgroundColor: '#0B0B0B',
-    borderRadius: 22,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: '#2A2A2A',
-    padding: 10,
-  },
-  monthlyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  monthNavButton: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   monthTitle: {
     color: COLORS.white,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
   },
   monthDayLabelsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   monthDayLabel: {
     color: '#5C5C5C',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
     width: '14.28%',
@@ -642,13 +542,13 @@ const styles = StyleSheet.create({
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    rowGap: 8,
+    rowGap: 4,
   },
   monthDayCell: {
     width: '14.28%',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    minHeight: 46,
+    minHeight: 34,
   },
   monthRingWrapper: {
     width: MONTH_CELL_SIZE,
@@ -663,47 +563,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  monthNumberWrapToday: {
+    backgroundColor: INSIGHT_GREEN,
+    borderRadius: MONTH_CELL_SIZE / 2,
+  },
   monthDayNumber: {
     color: COLORS.white,
     fontSize: 10,
     fontWeight: '700',
   },
-  monthTodayCircle: {
-    width: MONTH_CELL_SIZE,
-    height: MONTH_CELL_SIZE,
-    borderRadius: MONTH_CELL_SIZE / 2,
-    backgroundColor: '#1C1C1C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   monthTodayLabel: {
     color: INSIGHT_GREEN,
     fontSize: 9,
     fontWeight: '700',
-    marginTop: 4,
-  },
-  reflectionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginTop: SPACING.l,
-    marginBottom: SPACING.l,
-  },
-  reflectionChip: {
-    flex: 1,
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(254,248,239,0.18)',
-  },
-  reflectionText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '700',
+    marginTop: 2,
   },
 });

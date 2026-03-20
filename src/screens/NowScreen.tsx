@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, LayoutAnimation, Platform, UIManager, ScrollView, Modal, Alert, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, LayoutAnimation, Platform, UIManager, ScrollView, Modal, Alert, Image, Linking, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -15,8 +15,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { SvgUri } from 'react-native-svg';
 import * as Location from 'expo-location';
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 type LongPressScaleProps = {
   style?: any;
@@ -24,7 +24,8 @@ type LongPressScaleProps = {
   onLongPress?: () => void;
   delayLongPress?: number;
   activeOpacity?: number;
-  onLayout?: (event: any) => void;
+  pressInScale?: number;
+  onLayout?: (event: LayoutChangeEvent) => void;
   children: React.ReactNode;
 };
 
@@ -34,13 +35,14 @@ const LongPressScale = ({
   onLongPress,
   delayLongPress,
   activeOpacity = 0.85,
+  pressInScale = 1.02,
   onLayout,
   children,
 }: LongPressScaleProps) => {
   const scale = useRef(new Animated.Value(1)).current;
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 1.02,
+      toValue: pressInScale,
       useNativeDriver: true,
       speed: 20,
       bounciness: 6,
@@ -80,37 +82,18 @@ const TaskCheck = ({
   size: number;
   radius: number;
   inset: number;
-}) => {
-  const glow = useRef(new Animated.Value(isActive ? 1 : 0)).current;
-  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.15] });
-
-  useEffect(() => {
-    Animated.timing(glow, {
-      toValue: isActive ? 1 : 0,
-      duration: isActive ? 220 : 160,
-      easing: isActive ? Easing.out(Easing.quad) : Easing.in(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [isActive, glow]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.checkBase,
-        { width: size, height: size, borderRadius: radius },
-        isActive && styles.checkBaseActive,
-      ]}
-    >
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.checkGlow,
-          { borderRadius: radius + 6, opacity: glow, transform: [{ scale: glowScale }] },
-        ]}
-      />
-    </Animated.View>
-  );
-};
+}) => (
+  <View
+    style={[
+      styles.checkBase,
+      { width: size, height: size, borderRadius: radius },
+      isActive && styles.checkBaseActive,
+    ]}
+  >
+    {isActive ? <View style={[styles.checkGlow, { borderRadius: radius }]} /> : null}
+    {isActive ? <Ionicons name="checkmark" size={Math.max(size - inset * 2, 10)} color="#0B0B0C" /> : null}
+  </View>
+);
 
 export const NowScreen = () => {
   const navigation = useNavigation<any>();
@@ -135,6 +118,7 @@ export const NowScreen = () => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
   });
+  const geocodeCacheRef = useRef<Record<string, string>>({});
   const confettiPiecesRef = useRef<Array<{
     id: string;
     color: string;
@@ -231,6 +215,12 @@ export const NowScreen = () => {
   const detailIconUri = Image.resolveAssetSource(require('../../assets/icons/DETAILICON.svg')).uri;
   const mapIconUri = Image.resolveAssetSource(require('../../assets/icons/MAPICON.svg')).uri;
   const editIconUri = Image.resolveAssetSource(require('../../assets/icons/EDIT ICON.svg')).uri;
+  const busIconUri = Image.resolveAssetSource(require('../../assets/icons/bus icon.svg')).uri;
+  const walkIconUri = Image.resolveAssetSource(require('../../assets/icons/walk icon.svg')).uri;
+  const flightIconUri = Image.resolveAssetSource(require('../../assets/icons/flight icon.svg')).uri;
+  const taxiIconUri = Image.resolveAssetSource(require('../../assets/icons/taxi icon.svg')).uri;
+  const bikeIconUri = Image.resolveAssetSource(require('../../assets/icons/bike icon.svg')).uri;
+  const carIconUri = Image.resolveAssetSource(require('../../assets/icons/car icon.svg')).uri;
   const prioritiseActionIconUri = Image.resolveAssetSource(require('../../assets/icons/prioritise icon.svg')).uri;
   const copyActionIconUri = Image.resolveAssetSource(require('../../assets/icons/settingsicon/copy icon.svg')).uri;
   const moveActionIconUri = Image.resolveAssetSource(require('../../assets/icons/settingsicon/move icon.svg')).uri;
@@ -481,7 +471,7 @@ export const NowScreen = () => {
     // 1. Load User
     const profile = await StorageService.getUserProfile();
     let activeProfile = profile;
-    if (profile?.backgroundLocationEnabled) {
+    if (profile?.backgroundLocationEnabled || profile?.locationEnabled) {
       try {
         let last = await Location.getLastKnownPositionAsync();
         if (!last && profile.locationEnabled) {
@@ -928,25 +918,86 @@ export const NowScreen = () => {
     return parts.join(' → ');
   };
 
-  const fetchCommuteDetails = async (origin: string, destination: string, departureTime: number) => {
+  const fetchCommuteDetails = async (
+    origin: string,
+    destination: string,
+    departureTime: number,
+    mode: 'transit' | 'driving' | 'walking' | 'bicycling'
+  ) => {
     if (!GOOGLE_MAPS_API_KEY) return null;
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=transit&departure_time=${departureTime}&key=${GOOGLE_MAPS_API_KEY}`;
+    const trafficParam = mode === 'driving' ? '&traffic_model=best_guess' : '';
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=${mode}&departure_time=${departureTime}${trafficParam}&key=${GOOGLE_MAPS_API_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
     const route = data?.routes?.[0];
     const leg = route?.legs?.[0];
     if (!leg) return null;
-    const durationMinutes = leg?.duration?.value ? Math.round(leg.duration.value / 60) : null;
+    const durationSource =
+      mode === 'driving' && leg?.duration_in_traffic?.value ? leg.duration_in_traffic.value : leg?.duration?.value;
+    const durationMinutes = durationSource ? Math.round(durationSource / 60) : null;
     const distanceText = leg?.distance?.text;
-    const summary = leg?.steps ? extractTransitSummary(leg.steps) : route?.summary;
+    const summary = mode === 'transit' && leg?.steps ? extractTransitSummary(leg.steps) : route?.summary;
     return {
       durationMinutes: durationMinutes ?? null,
       distanceText: typeof distanceText === 'string' ? distanceText : undefined,
       summary: typeof summary === 'string' ? summary : undefined,
+      mode,
     };
   };
 
+  const fetchCommuteDetailsWithFallback = async (
+    origin: string,
+    destination: string,
+    departureTime: number
+  ) => {
+    const modes: Array<'transit' | 'driving' | 'walking' | 'bicycling'> = ['transit', 'driving', 'walking'];
+    for (const mode of modes) {
+      const details = await fetchCommuteDetails(origin, destination, departureTime, mode);
+      if (details?.durationMinutes) {
+        return details;
+      }
+    }
+    return null;
+  };
+
   const isCommuteTask = (item: TimeBlock) => item.isCommute || item.title.toLowerCase().includes('commute');
+
+  const parseLatLng = (value: string) => {
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lng = Number(match[3]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return `${lat},${lng}`;
+  };
+
+  const resolveLocationToCoords = async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const fromCache = geocodeCacheRef.current[trimmed];
+    if (fromCache) return fromCache;
+    const direct = parseLatLng(trimmed);
+    if (direct) {
+      geocodeCacheRef.current[trimmed] = direct;
+      return direct;
+    }
+    if (!GOOGLE_MAPS_API_KEY) return trimmed;
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(trimmed)}&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const location = data?.results?.[0]?.geometry?.location;
+      if (location?.lat && location?.lng) {
+        const coords = `${location.lat},${location.lng}`;
+        geocodeCacheRef.current[trimmed] = coords;
+        return coords;
+      }
+    } catch (e) {
+      return trimmed;
+    }
+    return trimmed;
+  };
 
   const estimateCommuteMinutes = (location?: string) => {
     const text = location?.trim().toLowerCase() ?? '';
@@ -956,6 +1007,28 @@ export const NowScreen = () => {
     if (/(hospital|clinic|doctor|dentist)/.test(text)) return 35;
     if (/(office|work|gym|studio)/.test(text)) return 20;
     return 15;
+  };
+
+  const getCommuteModeLabel = (mode?: string, summary?: string) => {
+    const summaryText = summary?.toLowerCase() ?? '';
+    if (summaryText.includes('taxi')) return 'Taxi';
+    if (summaryText.includes('flight') || summaryText.includes('airport')) return 'Flight';
+    if (mode === 'driving') return 'Car';
+    if (mode === 'walking') return 'Walk';
+    if (mode === 'bicycling') return 'Bike';
+    if (mode === 'transit') return 'Bus';
+    return '';
+  };
+
+  const getCommuteModeIconUri = (mode?: string, summary?: string) => {
+    const summaryText = summary?.toLowerCase() ?? '';
+    if (summaryText.includes('taxi')) return taxiIconUri;
+    if (summaryText.includes('flight') || summaryText.includes('airport')) return flightIconUri;
+    if (mode === 'driving') return carIconUri;
+    if (mode === 'walking') return walkIconUri;
+    if (mode === 'bicycling') return bikeIconUri;
+    if (mode === 'transit') return busIconUri;
+    return undefined;
   };
 
   const addCommuteBlocks = (items: TimeBlock[], dateKey: string, profile?: UserProfile | null) => {
@@ -972,7 +1045,7 @@ export const NowScreen = () => {
       profile?.lastKnownLatitude !== undefined && profile?.lastKnownLongitude !== undefined
         ? `${profile.lastKnownLatitude},${profile.lastKnownLongitude}`
         : undefined;
-    const defaultOrigin = lastKnownCoords || homeCoords || profile?.homeAddress;
+    const defaultOrigin = homeCoords || profile?.homeAddress || lastKnownCoords;
     const generatedCommuteIds = new Set<string>();
     baseItems.forEach(item => {
       if (!item.location || isCommuteTask(item) || isWakeOrSleep(item)) return;
@@ -1036,15 +1109,30 @@ export const NowScreen = () => {
   const enhanceCommuteBlocks = async (items: TimeBlock[], profile?: UserProfile | null) => {
     if (!profile || !GOOGLE_MAPS_API_KEY) return;
     const baseDate = selectedDate;
+    const buildDateTimeFromTime = (time: string, dateValue?: string) => {
+      const dateBase = dateValue ? parseISO(dateValue) : baseDate;
+      const [h, m] = time.split(':').map(Number);
+      const next = new Date(dateBase);
+      next.setHours(h || 0, m || 0, 0, 0);
+      return next;
+    };
     const updated = await Promise.all(
       items.map(async item => {
         if (!item.isCommute || !item.commuteFrom || !item.commuteTo) return item;
-        const departureDate = buildDateTimeForItem(item, baseDate);
-        const details = await fetchCommuteDetails(item.commuteFrom, item.commuteTo, Math.floor(departureDate.getTime() / 1000));
+        const isBefore = item.title.toLowerCase().includes('commute to');
+        const departureTime = isBefore ? item.endTime : item.startTime;
+        const departureDate = buildDateTimeFromTime(departureTime, item.date);
+        const resolvedFrom = await resolveLocationToCoords(item.commuteFrom);
+        const resolvedTo = await resolveLocationToCoords(item.commuteTo);
+        if (!resolvedFrom || !resolvedTo) return item;
+        const details = await fetchCommuteDetailsWithFallback(
+          resolvedFrom,
+          resolvedTo,
+          Math.floor(departureDate.getTime() / 1000)
+        );
         if (!details || !details.durationMinutes) return item;
         const bufferMinutes = item.commuteBufferMinutes ?? profile.commuteBufferMinutes ?? 10;
         const totalMinutes = details.durationMinutes + bufferMinutes;
-        const isBefore = item.title.toLowerCase().includes('commute to');
         const startMinutes = isBefore ? toMinutes(item.endTime) - totalMinutes : toMinutes(item.startTime);
         const endMinutes = isBefore ? toMinutes(item.endTime) : toMinutes(item.startTime) + totalMinutes;
         return {
@@ -1054,7 +1142,8 @@ export const NowScreen = () => {
           commuteDurationMinutes: details.durationMinutes,
           commuteDistanceText: details.distanceText,
           commuteSummary: details.summary,
-          commuteUrl: buildCommuteUrl(item.commuteFrom, item.commuteTo, item.commuteMode ?? 'transit'),
+          commuteMode: details.mode,
+          commuteUrl: buildCommuteUrl(item.commuteFrom, item.commuteTo, details.mode),
           commuteUpdatedAt: Date.now(),
         };
       })
@@ -1187,8 +1276,14 @@ export const NowScreen = () => {
   const detailCommuteSummary = detailTask?.commuteSummary
     ? detailTask.commuteSummary
     : detailTask?.commuteDurationMinutes
-    ? `${formatDuration(detailTask.commuteDurationMinutes)}${detailTask.commuteBufferMinutes ? ` + ${detailTask.commuteBufferMinutes}m buffer` : ''}`
+    ? `${formatDuration(detailTask.commuteDurationMinutes)}`
     : '';
+  const detailCommuteModeLabel = detailTask?.commuteMode
+    ? getCommuteModeLabel(detailTask.commuteMode, detailTask.commuteSummary)
+    : '';
+  const detailCommuteIconUri = detailTask?.commuteMode
+    ? getCommuteModeIconUri(detailTask.commuteMode, detailTask.commuteSummary)
+    : undefined;
   const detailCommuteDistance = detailTask?.commuteDistanceText;
   const detailCommuteUrl = detailTask?.commuteUrl;
 
@@ -1347,6 +1442,12 @@ export const NowScreen = () => {
                 const isWake = titleLower.includes('wake');
                 const isMuted = isCommute;
                 const taskVisual = getTaskVisual(item.title);
+                const commuteModeLabel = isCommute ? getCommuteModeLabel(item.commuteMode, item.commuteSummary) : '';
+                const commuteIconUri = isCommute ? getCommuteModeIconUri(item.commuteMode, item.commuteSummary) : undefined;
+                const commuteDurationLabel = item.commuteDurationMinutes
+                  ? `${formatDuration(item.commuteDurationMinutes)}`
+                  : formatDuration(durationMins);
+                const commuteDisplayLabel = commuteModeLabel ? `${commuteModeLabel} · ${commuteDurationLabel}` : commuteDurationLabel;
                 const rowHeight = rowHeights[item.id] ?? 0;
                 const dotCount = isExpanded && hasSteps
                   ? getDotCountForHeight(rowHeight, 7, 15)
@@ -1410,7 +1511,7 @@ export const NowScreen = () => {
                           activeOpacity={0.85}
                           onLongPress={() => openTaskMenu(item)}
                           delayLongPress={250}
-                          onLayout={e => {
+                          onLayout={(e: LayoutChangeEvent) => {
                             const nextHeight = Math.round(e.nativeEvent.layout.height);
                             setRowHeights(prev => (prev[item.id] === nextHeight ? prev : { ...prev, [item.id]: nextHeight }));
                           }}
@@ -1429,9 +1530,18 @@ export const NowScreen = () => {
                           >
                             {item.title}
                           </Text>
-                          <Text style={[styles.cardDuration, isMuted && styles.mutedDuration, item.isCompleted && styles.cardDurationCompleted]}>
-                            {formatDuration(durationMins)}
-                          </Text>
+                          {isCommute ? (
+                            <View style={styles.commuteDurationRow}>
+                              {commuteIconUri ? <SvgUri uri={commuteIconUri} width={12} height={12} /> : null}
+                              <Text style={[styles.cardDuration, isMuted && styles.mutedDuration, item.isCompleted && styles.cardDurationCompleted]}>
+                                {commuteDisplayLabel}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={[styles.cardDuration, isMuted && styles.mutedDuration, item.isCompleted && styles.cardDurationCompleted]}>
+                              {formatDuration(durationMins)}
+                            </Text>
+                          )}
                         </View>
                       </View>
                       <TouchableOpacity
@@ -1645,10 +1755,12 @@ export const NowScreen = () => {
                     </View>
                     {detailTask.isCommute || detailCommuteSummary ? (
                       <View style={styles.detailRow}>
-                        <SvgUri uri={timetableIconUri} width={14} height={14} />
+                        <SvgUri uri={detailCommuteIconUri ?? timetableIconUri} width={14} height={14} />
                         <View style={styles.detailRowStack}>
                           <Text style={styles.detailRowText}>
-                            {detailCommuteSummary || 'Route details unavailable'}
+                            {detailCommuteModeLabel
+                              ? `${detailCommuteModeLabel} · ${detailCommuteSummary || 'Route details unavailable'}`
+                              : detailCommuteSummary || 'Route details unavailable'}
                           </Text>
                           {detailCommuteDistance ? (
                             <Text style={styles.detailRowSubText}>{detailCommuteDistance}</Text>
@@ -2095,6 +2207,12 @@ const styles = StyleSheet.create({
   cardDuration: {
     color: COLORS.textDim,
     fontSize: 10,
+    marginTop: 2,
+  },
+  commuteDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 2,
   },
   cardDurationCompleted: {
